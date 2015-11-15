@@ -1,0 +1,27 @@
+#dataset contiene risultati relativi all'analisi chimica di 6 differenti tipi di vetro, e la variabile di
+#risposta è appunto 'Type' (colonna 10), mentre tutte le altre colonne contengono le variabili di input
+#(previsori)
+data(Glass, package='mlbench')
+
+#splitto, in modo casuale, il dataframe in un training set e in un test set utilizzando le proporzioni
+#80%-20%
+index.random <- sort(sample(nrow(Glass), size=nrow(Glass)*0.8, replace=F))
+glass.train <- Glass[index.random, ]
+glass.test <- Glass[-index.random, ]
+
+
+#aprendo una Support Vector Machines con kernel Radiale/Gaussiano sul training set, scegliendo i
+#parametri ottimali mediante una cross-validation;
+library(e1071)
+tuned.radial.svm <- tune.svm(Type~., kernel="radial", data=glass.train, gamma=10^(-6:-1), cost=10^(1:2))
+summary(tuned.radial.svm)
+final.mode <- svm(Type~., kernel="radial", data= glass.train, gamma=0.01, cost=100)
+
+#utilizzare l'algoritmo di classificazione così appreso per classificare le istanze nel test set
+pred.model <- predict(final.mode, glass.test)
+head(pred.model)
+
+#costruire una matrice di confusione e valutare l'accuratezza della classificazione.
+conf.matrix <- table(true = glass.test[,1], pred= pred.model)
+conf.matrix
+classAgreement(conf.matrix)$diag

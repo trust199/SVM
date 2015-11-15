@@ -1,0 +1,38 @@
+# Il dataset da utilizzare è Vehicle appartenente al package ' mlbench '. L'obiettivo è quello di classificare
+# correttamente il tipo di veicolo utilizzando un feature-set composto da 18 variabili contenute nelle prime 18
+# colonne del dataframe. La variabile che contiene l'output è  Class  (la 19-esima colonna).
+
+ rm(list=ls())
+ library(mlbench)
+ data(Vehicle)
+ data.frame <- Vehicle
+
+# Splittare, in modo casuale, il dataframe in un training set e in un test set utilizzando le proporzioni 80%-20%;
+
+ index.random <- sort(sample(nrow(data.frame), size=nrow(data.frame)*0.8, replace=F))
+
+ data.frame.train <- data.frame[index.random, ]
+ data.frame.test <- data.frame[-index.random, ]
+
+# apprendere una Support Vector Machine sul training set, fissando i parametri nel modo ritenuto più opportuno;
+# svm lineare
+
+ library(e1071)
+
+
+ data.model <- svm(Class~., data=data.frame.train, kernel="linear", gamma=1)
+
+# utilizzare l'algoritmo di classificazione così appreso per classificare le istanze nel test set;
+
+ pred.model <- predict(data.model, data.frame.test)
+
+# costruire una matrice di confusione e 
+
+ conf.matrix <- table(true=data.frame.test[,19], pred= pred.model)
+
+
+# valutare l'accuratezza della classificazione.
+
+ classAgreement(conf.matrix)$diag
+
+

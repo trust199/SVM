@@ -1,0 +1,75 @@
+# Per questa prova abbiamo due sorgenti. Un vettore di 100 documenti in modo 
+# vettore carattere che va preparato dalla libreria 'RtextTools':
+
+ rm(list=ls())
+ library(RTextTools)
+ data(USCongress)
+ textA <- as.character(USCongress$text[1:100])
+
+# ed il corpus 'acq' di Reuters-21578 fornito con il pacchetto 'tm', 
+# qui importato direttamente nel corpus 'corpusB':
+
+ library(tm)
+ data("acq"); corpusB <- acq
+
+# Trasformare 'textA' nel corpus 'corpusA' mediante la libreria 'tm', utilizzando l'opportuno
+# costruttore, ed infine ottenere un unico corpus combinato che contenga 150 documenti;
+
+ corpusA <- Corpus(VectorSource(textA))
+
+ corpus <- c(corpusA, corpusB)
+
+# Effettuare tutte le operazioni di pre-processing ritenute opportune
+
+ corpusC <- tm_map(corpus, content_transformer(tolower))
+ corpusC <- tm_map(corpusC, removeNumbers)
+ corpusC <- tm_map(corpusC, removePunctuation)
+ corpusC <- tm_map(corpusC, stripWhitespace)
+ corpusC <- tm_map(corpusC, removeWords, stopwords("english"))
+
+# costruire la matrice documenti-termini utilizzando la rappresentazione tf-idf,
+
+ DTM <- DocumentTermMatrix(corpusC, control=list(weighting=weightTfIdf))
+
+# semplificarne la sparsità in modo da conservare tra 20 e 40 token
+
+ DTM_final <- removeSparseTerms(DTM, sparse=0.90)
+
+# Trasformare la matrice documenti-termini in una matrice dati ed aggiungere una prima colonna
+# contenente l'etichetta del corpus di appartenenza nel modo seguente (si supponga che
+# 'myDTM_final' sia la matrice documenti-termini già semplificata dopo gli step precedenti)
+
+ data.matrix <- data.frame(inspect(DTM_final))
+
+## ignorare il warning!!!!!
+
+ LABEL <- c(rep("A", 100), rep("B", 50))
+ data.matrix <- cbind(LABEL, data.matrix)
+
+# Utilizzare la funzione 'svm' della libreria 'e1071' per effettuare il training di una 
+# Support Vector Machine (SVM) su questi dati.
+
+ library(e1071)
+ 
+# bipartire in modo causale i documenti (righe) in un training/test set 
+# secondo la percentuale 75%-25%;
+
+ index.random <- sample(nrow(data.matrix), size=nrow(data.matrix)*0.75, replace=F)
+
+ data.matrix.train <- data.matrix[index.random,]
+ data.matrix.test <- data.matrix[-index.random,]
+
+# effettuare l'apprendimento sul training set utilizzando una SVM non lineare con kernel radiale,
+# ricavando il valore ottimale di gamma e del parametro di costo C mediante una ten-fold cross-validation.
+
+ model.radial.svm <- tune.svm(LABEL~.,kernel="radial", gamma=10^(-6:-1), cost=10^(1:2), data=data.matrix.train)
+ final.model <- svm(LABEL~., kernel="radial", data=data.matrix.train, gamma=0.1, cost=10)
+
+# classificare i documenti nel test set e costruire la matrice di confusione,
+
+ pred.final.model <- predict(final.model, data.matrix.test)
+ conf.matrix <- table(true=data.matrix.test[,1], pred=pred.final.model)
+
+# calcolando l'accuratezza della classificazione ottenuta.
+
+ classAgreement(conf.matrix)$diag
